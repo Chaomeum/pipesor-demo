@@ -29,7 +29,7 @@ Este fallo corresponde al patrón **C06 «Probe HTTP sin respuesta / conectivida
 |---|---|---|
 | `Deploy` (`deploy.yml`) | Pruebas unitarias, despliegue en el runner y health check. Se ejecuta con cada push a `main` que cambie `app/`, `deploy/` o `scripts/`, y manualmente. | **Sí, solo este** |
 | `Pipesor report` (`pipesor-report.yml`) | Tras un `Deploy` fallido, obtiene el reporte de diagnóstico mediante OIDC y lo adjunta como artifact y resumen del run. | No |
-| `Demo reset` (`demo-reset.yml`) | Restaura el puerto erróneo en `main` y lanza `Deploy` para generar un nuevo incidente. | No |
+| `Demo reset` (`demo-reset.yml`) | Restaura el puerto erróneo en `main` después de una demo. No ejecuta `Deploy`. | No |
 
 ## Relación con los objetivos del proyecto
 
@@ -64,9 +64,9 @@ OE4, la comparación con el diagnóstico manual y la reducción del TMD, corresp
    `pipesor-demo` → workflow `Deploy`. Registrar exige ser administrador del repositorio.
 4. **Concederte Operar** en el pipeline (sección *Personas*). Configurar no incluye Operar, y sin Operar no se
    pueden registrar la remediación ni la revisión.
-5. **Ensayo:** ejecuta `Demo reset` (Actions → Demo reset → Run workflow). En unos 20 s falla `Deploy`; en
-   aproximadamente un minuto aparece el incidente con su diagnóstico, y `Pipesor report` adjunta el reporte.
-   Recorre el guion completo una vez y vuelve a ejecutar `Demo reset` para dejar un incidente abierto.
+5. **Ensayo:** Actions → `Deploy` → *Run workflow*. En unos 20 s falla; en aproximadamente un minuto aparece el
+   incidente con su diagnóstico, y `Pipesor report` adjunta el reporte. Recorre el guion completo una vez,
+   ejecuta `Demo reset` y vuelve a lanzar `Deploy` para dejar un incidente abierto para la presentación.
 
 ## Guion sugerido (15 minutos)
 
@@ -75,7 +75,7 @@ OE4, la comparación con el diagnóstico manual y la reducción del TMD, corresp
 | 0:00–3:00 | Problema y objetivos | Problema del TMD, objetivo general y la tabla OE1–OE3 de arriba. |
 | 3:00–4:00 | 1. Inicio de sesión | Abrir el dashboard desplegado → aceptar la política y los términos → *Continuar con GitHub*. Sesión de 1 h y ningún token en la URL. |
 | 4:00–5:00 | 2. Workflows monitorizados | *Pipelines* → *Añadir workflow monitorizado*: mostrar `pipesor-demo` y el workflow `Deploy` ya registrado. Pipesor solo registra; no modifica GitHub. |
-| 5:00–6:30 | 3. Fallo en vivo (opcional) | Actions → `Demo reset` → *Run workflow*. Mientras corre, mostrar el log del run fallido: el servicio escucha en 8080 y la sonda usa 8081. Si no hay tiempo, usar el incidente preparado en el ensayo. |
+| 5:00–6:30 | 3. Fallo en vivo (opcional) | Actions → `Deploy` → *Run workflow* (con el archivo en su estado de fallo). Mientras corre, mostrar el log del run fallido: el servicio escucha en 8080 y la sonda usa 8081. Si no hay tiempo, usar el incidente preparado en el ensayo. |
 | 6:30–8:30 | 4. Diagnóstico | Abrir el incidente: causa probable, recomendación y limitaciones, marcadas como salida del modelo; extracto y localizador, marcados como evidencia observada; fuentes de conocimiento. Mostrar el artifact y el resumen de `Pipesor report` en GitHub (OE3: reporte). |
 | 8:30–11:00 | 5. Remediación | *Iniciar remediación* → en GitHub, abrir `deploy/orders-api.env` → lápiz (*Edit*) → cambiar `8081` por `8080` → *Commit changes* directamente a `main`. El push lanza `Deploy` y en unos 20 s aparece el check verde. En el dashboard: *Elige la ejecución de verificación* → seleccionar el run verde → *Registrar verificación* → *Resolver incidente*. |
 | 11:00–12:00 | 6. Revisión humana | *Confirmar diagnóstico* → comentario → *Registrar confirmación*. El estado del incidente en la lista pasa de *Pendiente* a *Confirmado*. |
@@ -93,9 +93,12 @@ Notas para el guion:
 
 ## Reiniciar la demo
 
-Actions → **Demo reset** → *Run workflow*. Restaura `HEALTHCHECK_URL` con el puerto `8081` en `main` y lanza
-`Deploy`, que falla y abre un incidente nuevo. Desmarca *Dispatch Deploy after the reset* si solo quieres
-restaurar el archivo.
+1. Actions → **Demo reset** → *Run workflow*. Restaura `HEALTHCHECK_URL` con el puerto `8081` en `main`. Su
+   commit no ejecuta `Deploy`.
+2. Actions → **Deploy** → *Run workflow*. Falla y abre un incidente nuevo.
+
+`Deploy` debe lanzarlo una persona: un run iniciado por el `GITHUB_TOKEN` de otro workflow no dispara
+`Pipesor report`, así que no se generaría el artifact del reporte.
 
 ## Ejecutar en local
 
