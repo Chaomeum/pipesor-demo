@@ -10,13 +10,22 @@ ORDERS = [
 ]
 
 
-def order_summary(orders):
-    """Count orders by status and add up the paid amount."""
+def count_by_status(orders):
+    """Count orders by status."""
     by_status = {}
     for order in orders:
         by_status[order["status"]] = by_status.get(order["status"], 0) + 1
-    paid = sum(order["total"] for order in orders if order["status"] == "PAID")
-    return {"count": len(orders), "byStatus": by_status, "paidTotal": round(paid, 2)}
+    return by_status
+
+
+def paid_total(orders):
+    """Add up the amount of the paid orders."""
+    paid = sum(order["amount"] for order in orders if order["status"] == "PAID")
+    return round(paid, 2)
+
+
+def order_summary(orders):
+    return {"count": len(orders), "byStatus": count_by_status(orders), "paidTotal": paid_total(orders)}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):

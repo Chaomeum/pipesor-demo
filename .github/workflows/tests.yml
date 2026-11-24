@@ -1,0 +1,29 @@
+name: Tests
+
+# Monitored by Pipesor (pipeline 2 of 2). Runs the orders-api unit tests on every push to main
+# that changes the application code.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/**
+      - .github/workflows/tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run unit tests
+        working-directory: app
+        run: python3 -m unittest -v

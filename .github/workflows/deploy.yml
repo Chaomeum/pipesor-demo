@@ -1,16 +1,16 @@
 name: Deploy
 
-# The workflow Pipesor monitors. Register only this one in Pipesor.
-# A push to main that changes the service or its settings deploys again, which is how a fix
-# made in the GitHub web editor produces the verification run of the remediation.
+# Monitored by Pipesor (pipeline 1 of 2). Deploys orders-api on the runner and probes its health check.
+# A push to main that changes the deployment settings deploys again, which is how a fix made in the
+# GitHub web editor produces the verification run of the remediation. Application code changes run
+# the Tests workflow instead, so each fix re-runs only its own pipeline.
 
 on:
   push:
     branches: [main]
     paths:
-      - app/**
       - deploy/**
-      - scripts/**
+      - scripts/deploy.sh
       - .github/workflows/deploy.yml
   workflow_dispatch:
 
@@ -26,10 +26,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Run unit tests
-        working-directory: app
-        run: python3 -m unittest -v
 
       - name: Deploy and verify
         run: bash scripts/deploy.sh deploy/orders-api.env

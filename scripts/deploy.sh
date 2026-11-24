@@ -11,6 +11,8 @@ set +a
 
 log="${RUNNER_TEMP:-/tmp}/${SERVICE_NAME}.log"
 echo "Deploying ${SERVICE_NAME} (commit ${GITHUB_SHA:-local}) with settings from ${settings}"
+echo "Effective settings:"
+grep -E '^[A-Z_]+=' "$settings" | sed 's/^/  /'
 python3 -u app/server.py --name "$SERVICE_NAME" --port "$SERVICE_PORT" > "$log" 2>&1 &
 server=$!
 trap 'kill "$server" 2>/dev/null || true' EXIT
