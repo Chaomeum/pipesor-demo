@@ -1,0 +1,50 @@
+name: Demo reset
+
+# Puts the demo back in its failing state: restores the wrong health check port on main and,
+# optionally, dispatches Deploy so a new failed run (and a new Pipesor incident) appears.
+# Commits made with GITHUB_TOKEN do not trigger the push event, so only the dispatch runs Deploy.
+# Do not register this workflow in Pipesor.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_deploy:
+        description: Dispatch Deploy after the reset
+        type: boolean
+        default: true
+
+permissions: {}
+
+concurrency: demo-reset
+
+jobs:
+  reset:
+    name: reset
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+
+      - name: Restore the failing settings
+        run: |
+          set -euo pipefail
+          sed -i 's|^HEALTHCHECK_URL=.*|HEALTHCHECK_URL=http://localhost:8081/health|' deploy/orders-api.env
+          if git diff --quiet; then
+            echo "deploy/orders-api.env already has the failing health check port"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -am 'chore(demo): restore the failing health check port'
+          git push origin HEAD:main
+
+      - name: Dispatch Deploy
+        if: inputs.run_deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main

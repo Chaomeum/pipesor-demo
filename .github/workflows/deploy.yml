@@ -1,0 +1,35 @@
+name: Deploy
+
+# The workflow Pipesor monitors. Register only this one in Pipesor.
+# A push to main that changes the service or its settings deploys again, which is how a fix
+# made in the GitHub web editor produces the verification run of the remediation.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/**
+      - deploy/**
+      - scripts/**
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy orders-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run unit tests
+        working-directory: app
+        run: python3 -m unittest -v
+
+      - name: Deploy and verify
+        run: bash scripts/deploy.sh deploy/orders-api.env

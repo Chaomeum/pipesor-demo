@@ -1,0 +1,83 @@
+name: Pipesor report
+
+# After a failed Deploy run, waits for Pipesor's diagnosis through the GitHub Actions OIDC report
+# route and attaches it to this run as an artifact. Only identifiers of the triggering run are
+# used: nothing from it is checked out or executed. Do not register this workflow in Pipesor.
+
+on:
+  workflow_run: # only run identifiers are read; nothing from the triggering run is executed
+    workflows: [Deploy]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  report:
+    name: report
+    if: github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'timed_out'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      id-token: write
+    env:
+      RECOMMENDATION_URL: ${{ vars.PIPESOR_RECOMMENDATION_URL }}
+      REPOSITORY_ID: ${{ github.event.workflow_run.repository.id }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      POLL_SECONDS: '10'
+      DEADLINE_SECONDS: '600'
+    steps:
+      - name: Wait for the diagnosis
+        run: |
+          set -euo pipefail
+          if [ -z "$RECOMMENDATION_URL" ]; then
+            echo "::error::Set the repository variable PIPESOR_RECOMMENDATION_URL"
+            exit 1
+          fi
+          mkdir -p report
+          url="${RECOMMENDATION_URL%/}/api/v1/github-actions/repositories/${REPOSITORY_ID}/runs/${RUN_ID}/attempts/${RUN_ATTEMPT}/report"
+          deadline=$((SECONDS + DEADLINE_SECONDS))
+          polls=0
+          while :; do
+            polls=$((polls + 1))
+            token=$(curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=urn:pipesor:api:recommendation" \
+              | python3 -c 'import json, sys; print(json.load(sys.stdin)["value"])')
+            echo "::add-mask::${token}"
+            status=$(curl -sS -o report/response.json -w '%{http_code}' --max-time 30 \
+              -H "Authorization: Bearer ${token}" -H 'Accept: application/json' "$url" || echo 000)
+            if [ "$status" = 200 ]; then
+              break
+            fi
+            if [ "$status" != 404 ] && [ "$status" != 000 ]; then
+              echo "::error::The report route answered HTTP ${status}"
+              head -c 2000 report/response.json || true
+              exit 1
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::No diagnosis after ${DEADLINE_SECONDS}s (${polls} polls, last HTTP ${status})"
+              exit 1
+            fi
+            sleep "$POLL_SECONDS"
+          done
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          response = json.loads(Path("report/response.json").read_text(encoding="utf-8"))
+          Path("report/report.json").write_text(
+              json.dumps(response.get("report"), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+          )
+          markdown = response.get("markdown") or ""
+          Path("report/report.md").write_text(markdown, encoding="utf-8")
+          Path("report/response.json").unlink()
+          PY
+          cat report/report.md >> "$GITHUB_STEP_SUMMARY"
+          echo "Diagnosis received after ${polls} poll(s)"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pipesor-report-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: report/
+          retention-days: 30
+          if-no-files-found: error
