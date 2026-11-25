@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Puts both monitored pipelines back in their failing state with a single push to main.
+"""Puts the three monitored pipelines back in their failing state with a single push to main.
 
 Run it with your own GitHub CLI session (`gh auth login`), not from a workflow: a push or dispatch
 made with a workflow's GITHUB_TOKEN would not trigger the Pipesor report workflow.
@@ -7,7 +7,7 @@ made with a workflow's GITHUB_TOKEN would not trigger the Pipesor report workflo
     python3 scripts/demo_break.py [owner/repo]
 
 Files that are already broken get no change, so their workflow is dispatched instead; either way
-Deploy and Tests each run once and fail.
+Deploy, Tests and Staging each run once and fail.
 """
 
 import base64
@@ -28,6 +28,11 @@ BREAKS = {
         'paid = sum(order["total"] for order',
         'paid = sum(order["amount"] for order',
         "tests.yml",
+    ),
+    "staging/orders-api.json": (
+        '"exportCsv": false\n',
+        '"exportCsv": false,\n',
+        "staging.yml",
     ),
 }
 

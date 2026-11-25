@@ -1,0 +1,9 @@
+{
+  "environment": "staging",
+  "port": 8090,
+  "features": {
+    "summaryCache": true,
+    "exportCsv": false,
+  },
+  "currency": "PEN"
+}

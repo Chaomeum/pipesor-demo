@@ -1,0 +1,30 @@
+name: Staging
+
+# Monitored by Pipesor (pipeline 3 of 3, low criticality). Deploys orders-api to staging with its JSON
+# settings and promotes the release only if the startup probe answers 200. A push to main that changes
+# the staging settings deploys again; deployment settings and application code run Deploy and Tests.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - staging/**
+      - scripts/staging.sh
+      - .github/workflows/staging.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    name: Deploy orders-api to staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Deploy to staging and verify
+        run: bash scripts/staging.sh staging/orders-api.json
