@@ -29,6 +29,8 @@ while [ $((SECONDS - start)) -lt "$STARTUP_TIMEOUT_SECONDS" ]; do
   echo "startup probe: HTTP ${status} after $((SECONDS - start))s"
 done
 
+kill "$server" 2>/dev/null || true
+wait "$server" 2>/dev/null || true
 echo "Service log:"
 grep -v '"GET /health' "$log" | sed 's/^/  /'
 echo "Error: ${SERVICE_NAME} was not ready within the ${STARTUP_TIMEOUT_SECONDS}s startup deadline (last probe HTTP ${status})"
