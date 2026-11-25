@@ -20,7 +20,7 @@ def count_by_status(orders):
 
 def paid_total(orders):
     """Add up the amount of the paid orders."""
-    paid = sum(order["total"] for order in orders if order["status"] == "PAID")
+    paid = sum(order["amount"] for order in orders if order["status"] == "PAID")
     return round(paid, 2)
 
 
