@@ -1,0 +1,30 @@
+name: Reports
+
+# Monitored by Pipesor. Deploys orders-reports, which loads its report templates at startup, and
+# waits for its startup probe within the configured deadline. A push to main that changes reports/
+# deploys again.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - reports/**
+      - scripts/reports.sh
+      - .github/workflows/reports.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reports:
+    name: Deploy orders-reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Deploy and wait for readiness
+        run: bash scripts/reports.sh reports/reports.env

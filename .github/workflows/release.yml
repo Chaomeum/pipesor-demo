@@ -1,0 +1,29 @@
+name: Release
+
+# Monitored by Pipesor. Publishes an orders-api release: runs the release's database migrations
+# and tags it. A push to main that changes release/ publishes again.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - release/**
+      - scripts/release.sh
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish orders-api release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run migrations and publish
+        run: bash scripts/release.sh release/release.env

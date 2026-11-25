@@ -1,8 +1,7 @@
 name: Staging
 
-# Monitored by Pipesor (pipeline 3 of 3, low criticality). Deploys orders-api to staging with its JSON
-# settings and promotes the release only if the startup probe answers 200. A push to main that changes
-# the staging settings deploys again; deployment settings and application code run Deploy and Tests.
+# Monitored by Pipesor. Deploys orders-api to staging with its JSON settings and promotes the release
+# only if the startup probe answers 200. A push to main that changes the staging settings deploys again.
 
 on:
   push:

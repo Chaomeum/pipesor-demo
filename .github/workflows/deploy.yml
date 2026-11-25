@@ -1,6 +1,6 @@
 name: Deploy
 
-# Monitored by Pipesor (pipeline 1 of 3). Deploys orders-api on the runner and probes its health check.
+# Monitored by Pipesor. Deploys orders-api on the runner and probes its health check.
 # A push to main that changes the deployment settings deploys again, which is how a fix made in the
 # GitHub web editor produces the verification run of the remediation. Application code changes run
 # the Tests workflow instead, so each fix re-runs only its own pipeline.

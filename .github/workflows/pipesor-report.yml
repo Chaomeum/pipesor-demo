@@ -1,12 +1,12 @@
 name: Pipesor report
 
-# After a failed Deploy, Tests or Staging run, waits for Pipesor's diagnosis through the GitHub Actions OIDC report
+# After a failed run of a monitored workflow, waits for Pipesor's diagnosis through the GitHub Actions OIDC report
 # route and attaches it to this run as an artifact. Only identifiers of the triggering run are
 # used: nothing from it is checked out or executed. Do not register this workflow in Pipesor.
 
 on:
   workflow_run: # only run identifiers are read; nothing from the triggering run is executed
-    workflows: [Deploy, Tests, Staging]
+    workflows: [Deploy, Tests, Staging, Release, Reports]
     types: [completed]
 
 permissions: {}

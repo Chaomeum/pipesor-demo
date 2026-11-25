@@ -1,6 +1,6 @@
 name: Tests
 
-# Monitored by Pipesor (pipeline 2 of 3). Runs the orders-api unit tests on every push to main
+# Monitored by Pipesor. Runs the orders-api unit tests on every push to main
 # that changes the application code.
 
 on:

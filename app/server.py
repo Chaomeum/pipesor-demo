@@ -3,6 +3,8 @@
 import argparse
 import http.server
 import json
+import threading
+import time
 from pathlib import Path
 
 ORDERS = [
@@ -45,6 +47,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.server.startup_error:
             self._send(500, {"status": "DOWN"})
+        elif not self.server.ready.is_set():
+            self._send(503, {"status": "STARTING"})
         elif self.path == "/health":
             self._send(200, {"status": "UP"})
         elif self.path == "/orders/summary":
@@ -64,11 +68,21 @@ class Handler(http.server.BaseHTTPRequestHandler):
         print(f"[{self.server.name}] {self.address_string()} {fmt % args}", flush=True)
 
 
+def warm_up(server, name, seconds, steps=4):
+    """Load the report templates before answering requests; /health answers 503 until done."""
+    for step in range(1, steps + 1):
+        print(f"[{name}] info: loading report templates {step}/{steps}", flush=True)
+        time.sleep(seconds / steps)
+    server.ready.set()
+    print(f"[{name}] info: report templates loaded, ready", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", required=True)
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--config", help="optional JSON settings file")
+    parser.add_argument("--warmup", type=float, default=0, help="seconds spent loading report templates")
     args = parser.parse_args()
     settings, startup_error = load_settings(args.config)
     if startup_error:
@@ -79,7 +93,12 @@ def main():
     server = http.server.ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
     server.name = args.name
     server.startup_error = startup_error
+    server.ready = threading.Event()
     print(f"[{args.name}] listening on http://localhost:{args.port}", flush=True)
+    if args.warmup > 0:
+        threading.Thread(target=warm_up, args=(server, args.name, args.warmup), daemon=True).start()
+    else:
+        server.ready.set()
     server.serve_forever()
 
 

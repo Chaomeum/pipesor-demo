@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""Puts the three monitored pipelines back in their failing state with a single push to main.
+"""Puts the monitored pipelines back in their failing state with a single push to main.
 
 Run it with your own GitHub CLI session (`gh auth login`), not from a workflow: a push or dispatch
 made with a workflow's GITHUB_TOKEN would not trigger the Pipesor report workflow.
 
-    python3 scripts/demo_break.py [owner/repo]
+    python3 scripts/demo_break.py                    # every case
+    python3 scripts/demo_break.py staging release    # only these cases
+    python3 scripts/demo_break.py --repo owner/repo  # another copy of the repository
 
-Files that are already broken get no change, so their workflow is dispatched instead; either way
-Deploy, Tests and Staging each run once and fail.
+Cases: deploy, tests, staging, release, reports. Files that are already broken get no change, so
+their workflow is dispatched instead; either way each chosen pipeline runs once and fails.
 """
 
+import argparse
 import base64
 import json
 import subprocess
 import sys
 
-REPO = sys.argv[1] if len(sys.argv) > 1 else "Chaomeum/pipesor-demo"
+REPO = "Chaomeum/pipesor-demo"
 BRANCH = "main"
 # path -> (fixed text, failing text, workflow that the path triggers)
 BREAKS = {
@@ -34,7 +37,18 @@ BREAKS = {
         '"exportCsv": false,\n',
         "staging.yml",
     ),
+    "release/release.env": (
+        "MIGRATION_SCRIPT=release/scripts/migrate.sh",
+        "MIGRATION_SCRIPT=release/Scripts/migrate.sh",
+        "release.yml",
+    ),
+    "reports/reports.env": (
+        "STARTUP_TIMEOUT_SECONDS=20\n",
+        "STARTUP_TIMEOUT_SECONDS=5\n",
+        "reports.yml",
+    ),
 }
+CASES = {workflow.removesuffix(".yml"): path for path, (_, _, workflow) in BREAKS.items()}
 
 
 def gh(*args, body=None):
@@ -49,11 +63,24 @@ def gh(*args, body=None):
 
 
 def main():
+    global REPO
+    parser = argparse.ArgumentParser(description="Reintroduce the demo failures.")
+    parser.add_argument("cases", nargs="*", metavar="case",
+                        help=f"cases to break ({', '.join(CASES)}); all of them when omitted")
+    parser.add_argument("--repo", default=REPO, help=f"repository (default {REPO})")
+    args = parser.parse_args()
+    unknown = [case for case in args.cases if case not in CASES]
+    if unknown:
+        parser.error(f"unknown case {', '.join(unknown)}; choose from {', '.join(CASES)}")
+    REPO = args.repo
+    paths = [CASES[case] for case in args.cases] if args.cases else list(BREAKS)
+
     head = gh(f"repos/{REPO}/git/ref/heads/{BRANCH}")["object"]["sha"]
     base_tree = gh(f"repos/{REPO}/git/commits/{head}")["tree"]["sha"]
 
     changes, dispatch = [], []
-    for path, (fixed, failing, workflow) in BREAKS.items():
+    for path in paths:
+        fixed, failing, workflow = BREAKS[path]
         blob = gh(f"repos/{REPO}/contents/{path}?ref={head}")
         text = base64.b64decode(blob["content"]).decode("utf-8")
         if failing in text:
