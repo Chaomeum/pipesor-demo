@@ -45,15 +45,19 @@ jobs:
               | python3 -c 'import json, sys; print(json.load(sys.stdin)["value"])')
             echo "::add-mask::${token}"
             status=$(curl -sS -o report/response.json -w '%{http_code}' --max-time 30 \
-              -H "Authorization: Bearer ${token}" -H 'Accept: application/json' "$url" || echo 000)
+              -H "Authorization: Bearer ${token}" -H 'Accept: application/json' "$url" || true)
             if [ "$status" = 200 ]; then
               break
             fi
-            if [ "$status" != 404 ] && [ "$status" != 000 ]; then
-              echo "::error::The report route answered HTTP ${status}"
-              head -c 2000 report/response.json || true
-              exit 1
-            fi
+            # 404 = diagnosis not ready yet; 000/502/503/504 = Pipesor unreachable or restarting.
+            case "$status" in
+              404|000|502|503|504) ;;
+              *)
+                echo "::error::The report route answered HTTP ${status}"
+                head -c 2000 report/response.json || true
+                exit 1
+                ;;
+            esac
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "::error::No diagnosis after ${DEADLINE_SECONDS}s (${polls} polls, last HTTP ${status})"
               exit 1
