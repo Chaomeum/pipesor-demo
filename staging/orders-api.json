@@ -3,7 +3,7 @@
   "port": 8090,
   "features": {
     "summaryCache": true,
-    "exportCsv": false,
+    "exportCsv": false
   },
   "currency": "PEN"
 }
